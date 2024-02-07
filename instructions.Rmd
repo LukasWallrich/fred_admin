@@ -13,7 +13,7 @@ For this, the user needs to create an OSF Personal Access Token [here](https://o
 
 ```{r}
 source("release_dataset.R")
-Sys.setenv("YOUR OSF TOKEN")
+Sys.setenv("OSF TOKEN" = "YOUR OSF TOKEN")
 ```
 
 ## Releasing new versions

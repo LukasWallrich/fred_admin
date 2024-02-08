@@ -13,7 +13,7 @@ For this, the user needs to create an OSF Personal Access Token [here](https://o
 
 ```{r}
 source("release_dataset.R")
-Sys.setenv("OSF TOKEN" = "YOUR OSF TOKEN")
+Sys.setenv("OSF_TOKEN" = "YOUR OSF TOKEN")
 ```
 
 ## Releasing new versions
@@ -30,8 +30,7 @@ To note:
 - It cannot update nested folders - so to use this, the Data folder would need to be at the top level. (See [osfr issue](https://github.com/ropensci/osfr/issues/130))
 
 ```{r}
-release_notes <- glue::glue("- Summary of the changes
-                            - Should start with "-" so that they are shown as clean list")
+release_notes <- glue::glue("- First automated release")
 
 release_new_version(release_notes, "patch") #Or major/minor
 

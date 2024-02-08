@@ -29,7 +29,7 @@ process_excel_file <- function(data_folder,
 process_changelog <- function (release_notes,
                                version_type,
                                data_folder,
-                               changelog_file = "https://osf.io/gzmhy") {
+                               changelog_file = "https://osf.io/fj3xc") {
 
   temp_dir <- tempdir()
   osfr::osf_download(osfr::osf_retrieve_file(changelog_file), temp_dir, conflicts = "overwrite")
@@ -43,19 +43,21 @@ process_changelog <- function (release_notes,
   writeLines(markdown_content, file.path(temp_dir, "change_log.md"))
   osfr::osf_upload(data_folder, file.path(temp_dir, "change_log.md"), conflicts = "overwrite")
 
+  message("Updated changelog - still need to update data files.")
+
   return(current_version)
 
 }
 
 release_new_version <- function(release_notes,
                                 version_type = c("minor", "major", "patch"),
-                                osf_project = "m6uc5", # Real project: "9r62x",
-                                osf_folder = "1 Replication Database MAIN", # Real: "1 Replication Database (MAIN)"
+                                osf_project = "9r62x",
+                                osf_folder = "0 Data",
                                 osf_token = Sys.getenv("OSF_TOKEN"), ...) {
   osfr::osf_auth(osf_token)
   osf_project <- osfr::osf_retrieve_node(osf_project)
   data_folder <- osfr::osf_ls_files(osf_project, type = "folder") %>%
-    dplyr::filter(name == "Data")
+    dplyr::filter(name == osf_folder)
   old_version <- process_changelog(release_notes = release_notes, version_type = version_type, data_folder, ...)
   process_excel_file(data_folder = data_folder, old_version = old_version, ...)
   message("Successfully released version ", increment_version(old_version, version_type))

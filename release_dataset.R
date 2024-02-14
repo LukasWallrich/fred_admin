@@ -20,13 +20,25 @@ process_excel_file <- function(data_folder,
 
   osfr::osf_download(data_file, temp_dir, conflicts = "overwrite")
   file.rename(file.path(temp_dir, "FReD.xlsx"), file.path(temp_dir, glue("FReD_{old_version}.xlsx")))
-  osfr::osf_upload(archive_folder, file.path(temp_dir, glue("FReD_{old_version}.xlsx")), conflicts = "overwrite")
+  download.file(gsheet_link, file.path(temp_dir, "FReD.xlsx"), mode = "wb")
 
-  download.file(gsheet_link, file.path(temp_dir, "FReD.xlsx"))
+  dat <- try(openxlsx::read.xlsx(file.path(temp_dir, "FReD.xlsx"), sheet = 1))
+
+  if (inherits(dat, "try-error")) {
+    download.file(gsheet_link, file.path(temp_dir, "FReD.xlsx"), mode = "wb")
+    dat <- try(openxlsx::read.xlsx(file.path(temp_dir, "FReD.xlsx"), sheet = 1))
+    if (inherits(dat, "try-error")) {
+      stop("Error reading the new data file. Please check the status of the download link and try again.")
+    }
+    message("Google Sheets download initially failed. Second attempt succeeded, but please check result.")
+
+  }
+
+  osfr::osf_upload(archive_folder, file.path(temp_dir, glue("FReD_{old_version}.xlsx")), conflicts = "overwrite")
   osfr::osf_upload(data_folder, file.path(temp_dir, "FReD.xlsx"), conflicts = "overwrite")
 }
 
-process_changelog <- function (release_notes,
+prepare_changelog <- function (release_notes,
                                version_type,
                                data_folder,
                                changelog_file = "https://osf.io/fj3xc") {
@@ -40,12 +52,15 @@ process_changelog <- function (release_notes,
 
   markdown_content <- update_markdown_metadata(markdown_content = markdown_content, new_version = next_version, release_notes = release_notes)
 
-  writeLines(markdown_content, file.path(temp_dir, "change_log.md"))
+  return(list(old_version = current_version, new_changelog = markdown_content))
+
+}
+
+upload_changelog <- function(changelog,
+                             data_folder) {
+  temp_dir <- tempdir()
+  writeLines(changelog, file.path(temp_dir, "change_log.md"))
   osfr::osf_upload(data_folder, file.path(temp_dir, "change_log.md"), conflicts = "overwrite")
-
-  message("Updated changelog - still need to update data files.")
-
-  return(current_version)
 
 }
 
@@ -54,13 +69,17 @@ release_new_version <- function(release_notes,
                                 osf_project = "9r62x",
                                 osf_folder = "0 Data",
                                 osf_token = Sys.getenv("OSF_TOKEN"), ...) {
+  if (osf_token == "") {
+    stop("Please provide the osf_token argument or set the the environment variable OSF_TOKEN")
+  }
   osfr::osf_auth(osf_token)
   osf_project <- osfr::osf_retrieve_node(osf_project)
   data_folder <- osfr::osf_ls_files(osf_project, type = "folder") %>%
     dplyr::filter(name == osf_folder)
-  old_version <- process_changelog(release_notes = release_notes, version_type = version_type, data_folder, ...)
-  process_excel_file(data_folder = data_folder, old_version = old_version, ...)
-  message("Successfully released version ", increment_version(old_version, version_type))
+  changelog <- prepare_changelog(release_notes = release_notes, version_type = version_type, data_folder, ...)
+  process_excel_file(data_folder = data_folder, old_version = changelog$old_version, ...)
+  upload_changelog(changelog = changelog$new_changelog, data_folder)
+  message("Successfully released version ", increment_version(changelog$old_version, version_type))
 }
 
 # Function to extract the current version from Markdown

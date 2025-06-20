@@ -106,15 +106,23 @@ increment_version <- function(version, version_type = c("minor", "major", "patch
   paste(version_numbers, collapse = ".")
 }
 
-update_markdown_metadata <- function(markdown_content, new_version, release_notes) {
-  # Correctly update the version section without duplicating "**Version:**"
-  markdown_content <- sub("### Current Version\\n- \\*\\*Version:\\*\\* \\d+\\.\\d+\\.\\d+",
-                          glue("### Current Version\n- **Version:** {new_version}"),
-                          markdown_content)
+update_markdown_metadata <- function(markdown_content, new_version, release_notes, release_date = Sys.Date()) {
+  # Format the release date
+  formatted_date <- format(release_date, "%Y-%m-%d")
 
-  # Correctly format and insert the new release notes
+  # Define a more robust pattern that matches the version line, with an optional existing date
+  version_pattern <- "(### Current Version\\n- \\*\\*Version:\\*\\* )[\\d\\.v]+(?: \\(.*?\\))?"
+  # Create the replacement string with the new version and date
+  version_replacement <- glue("\\1{new_version} ({formatted_date})")
+
+  # Update the version section using the new pattern and replacement
+  markdown_content <- sub(version_pattern, version_replacement, markdown_content, perl = TRUE)
+  # --- END OF MODIFIED PART ---
+
+  # Correctly format and insert the new release notes, now including the date
   new_notes_formatted <- paste0("    ", str_replace_all(release_notes, "\n", "\n    "))
-  new_notes_section <- glue("### Latest Release Notes\n- **Notes for Version {new_version}**\n{new_notes_formatted}\n\n### Previous Release Notes")
+  new_notes_section <- glue("### Latest Release Notes\n- **Notes for Version {new_version} ({formatted_date})**\n{new_notes_formatted}\n\n### Previous Release Notes")
+
 
   # Move the old "Latest Release Notes" to "Previous Release Notes" and insert the new release notes
   markdown_content <- sub("### Latest Release Notes", new_notes_section, markdown_content)

@@ -4,26 +4,26 @@ library(glue)
 library(osfr)
 
 ## Download and upload file
-
 process_excel_file <- function(data_folder,
                                old_version,
                                gsheet_link = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTHmMJRD2rVTS_l_NjKleAWuSiOyds7InL5aB8zU82enT6lLscTDgIjvjfbm2Wrx15YdyHX_BjKAxLM/pub?output=xlsx",
+                               keep_sheets = c("Data", "FORRT R&R (editable)", "Additional Studies to be added", "Contributors FReD"),
                                ...) {
-
+  
   archive_folder <- osfr::osf_ls_files(data_folder, type = "folder") %>%
     dplyr::filter(name == "Archive")
-
+  
   data_file <- osfr::osf_ls_files(data_folder) %>%
     dplyr::filter(name == "FReD.xlsx")
-
+  
   temp_dir <- tempdir()
-
+  
   osfr::osf_download(data_file, temp_dir, conflicts = "overwrite")
   file.rename(file.path(temp_dir, "FReD.xlsx"), file.path(temp_dir, glue("FReD_{old_version}.xlsx")))
   download.file(gsheet_link, file.path(temp_dir, "FReD.xlsx"), mode = "wb")
-
+  
   dat <- try(openxlsx::read.xlsx(file.path(temp_dir, "FReD.xlsx"), sheet = 1))
-
+  
   if (inherits(dat, "try-error")) {
     download.file(gsheet_link, file.path(temp_dir, "FReD.xlsx"), mode = "wb")
     dat <- try(openxlsx::read.xlsx(file.path(temp_dir, "FReD.xlsx"), sheet = 1))
@@ -31,12 +31,35 @@ process_excel_file <- function(data_folder,
       stop("Error reading the new data file. Please check the status of the download link and try again.")
     }
     message("Google Sheets download initially failed. Second attempt succeeded, but please check result.")
-
+    
   }
-
+  
+  f <- file.path(temp_dir, "FReD.xlsx")
+  wb <- openxlsx::loadWorkbook(f)
+  
+  all_sheets <- openxlsx::getSheetNames(f)
+  
+  if (setdiff(keep_sheets, all_sheets) |> length() > 0) {
+    warning("The following sheets could not be found and will be missing from released dataset ", 
+            paste(setdiff(keep_sheets, all_sheets), collapse = ", "))
+  } 
+  
+  sheets_to_remove <- setdiff(all_sheets, keep_sheets)
+  
+  if (length(sheets_to_remove) > 0) {
+    for(sheet_name in sheets_to_remove) {
+      openxlsx::removeWorksheet(wb, sheet_name)
+      cat("Removed sheet:", sheet_name, "\n")
+    }
+  } else {
+    cat("No sheets needed to be removed.\n")
+  }
+  
+    
   osfr::osf_upload(archive_folder, file.path(temp_dir, glue("FReD_{old_version}.xlsx")), conflicts = "overwrite")
   osfr::osf_upload(data_folder, file.path(temp_dir, "FReD.xlsx"), conflicts = "overwrite")
 }
+
 
 prepare_changelog <- function (release_notes,
                                version_type,

@@ -7,7 +7,7 @@ library(osfr)
 process_excel_file <- function(data_folder,
                                old_version,
                                gsheet_link = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTHmMJRD2rVTS_l_NjKleAWuSiOyds7InL5aB8zU82enT6lLscTDgIjvjfbm2Wrx15YdyHX_BjKAxLM/pub?output=xlsx",
-                               keep_sheets = c("Data", "FORRT R&R (editable)", "Additional Studies to be added", "Contributors FReD"),
+                               keep_sheets = c("Data", "FORRT R&R (editable)", "Additional Studies to be added", "Contributors FReD", "key variables"),
                                ...) {
   
   archive_folder <- osfr::osf_ls_files(data_folder, type = "folder") %>%
